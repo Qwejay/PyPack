@@ -16,6 +16,9 @@ import stat
 import ast
 from pathlib import Path
 
+# 屏蔽 DirectWrite 遗留位图字体扫描警告
+os.environ["QT_LOGGING_RULES"] = "qt.text.font.db=false"
+
 # 设置高 DPI 自动缩放
 os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
 os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
@@ -42,6 +45,16 @@ def get_stdlib_names():
     return libs
 
 STD_LIBS = get_stdlib_names()
+
+
+def get_python_executable():
+    """
+    获取宿主 Python 解释器路径。
+    若本打包工具已被打包为独立可执行文件运行，则在系统 PATH 中寻找 python 解释器。
+    """
+    if getattr(sys, 'frozen', False):
+        return shutil.which("python") or shutil.which("python3") or "python"
+    return sys.executable
 
 
 # ======================== IO 异常处理与强制删除组件 ========================
@@ -216,19 +229,20 @@ class PackingThread(QThread):
             script_path = self.params['script_path']
             script_dir = Path(script_path).parent
             if "OneDrive" in str(script_path):
-                self.progress.emit("[警告] 工程位于 OneDrive 同步目录中，文件可能被锁定导致构建失败，建议将工程迁移至本地路径。")
+                self.progress.emit("[警告] 工程位于 OneDrive 同同步目录中，文件可能被锁定导致构建失败，建议将工程迁移至本地路径。")
             
             # 虚拟环境
             if self.params['use_venv']:
                 self.progress.emit("[环境预配置] 正在初始化 Python 虚拟环境...")
                 self.venv_dir = Path(tempfile.mkdtemp(prefix="pypack_env_"))
-                if not self.run_cmd_realtime([sys.executable, "-m", "venv", str(self.venv_dir)]):
+                host_py = get_python_executable()
+                if not self.run_cmd_realtime([host_py, "-m", "venv", str(self.venv_dir)]):
                     self.finished.emit(False, "虚拟环境初始化失败，请检查系统权限。")
                     return
                 python_exe = str(self.venv_dir / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
             else:
                 self.progress.emit("[环境警告] 虚拟环境已禁用，使用全局 Python。")
-                python_exe = sys.executable
+                python_exe = get_python_executable()
 
             # 安装引擎
             if engine == "Nuitka":
@@ -432,14 +446,54 @@ class MainWindow(QMainWindow):
         self._load_window_icon()
 
     def init_style(self):
-        self.setWindowTitle("PyPack - 自动化构建工具")
+        self.setWindowTitle("PyPack 1.0.0- 自动化构建工具")
         self.setStyleSheet("""
             QMainWindow { background-color: #fdfdfd; }
             QLabel { color: #343a40; font-size: 9pt; }
             QGroupBox { border: 1px solid #e9ecef; border-radius: 4px; margin-top: 6px; padding: 10px 8px 6px 8px; color: #212529; }
             QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 3px; color: #6c757d; font-size: 9pt; }
-            QLineEdit, QTextEdit, QComboBox { padding: 3px 6px; border: 1px solid #dee2e6; border-radius: 4px; font-size: 9pt; background: #ffffff; color: #212529; }
-            QLineEdit:focus, QTextEdit:focus, QComboBox:focus { border-color: #86b7fe; }
+            
+            /* 统一输入控件与下拉框基础样式 */
+            QLineEdit, QTextEdit, QComboBox { 
+                padding: 3px 6px; 
+                border: 1px solid #dee2e6; 
+                border-radius: 4px; 
+                font-size: 9pt; 
+                background: #ffffff; 
+                color: #212529; 
+            }
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus { 
+                border-color: #86b7fe; 
+            }
+            
+            /* 下拉框细节美化，去除原生自带的灰色按钮边框与渐变 */
+            QComboBox { 
+                padding-right: 22px; 
+            }
+            QComboBox::drop-down { 
+                subcontrol-origin: padding; 
+                subcontrol-position: top right; 
+                width: 20px; 
+                border-left-width: 0px; 
+                border-top-right-radius: 4px; 
+                border-bottom-right-radius: 4px; 
+            }
+            /* 采用优雅的 SVG 箭头代替原生灰色小三角 */
+            QComboBox::down-arrow { 
+                image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>"); 
+                width: 10px; 
+                height: 10px; 
+            }
+            /* 统一下拉选项菜单（QAbstractItemView）的边框与悬浮高亮样式 */
+            QComboBox QAbstractItemView { 
+                border: 1px solid #dee2e6; 
+                border-radius: 4px; 
+                background-color: #ffffff; 
+                selection-background-color: #0d6efd; 
+                selection-color: #ffffff; 
+                outline: none; 
+            }
+
             QCheckBox { font-size: 9pt; padding: 1px 0; color: #343a40; spacing: 5px; }
             QCheckBox::indicator { width: 13px; height: 13px; border: 1px solid #adb5bd; border-radius: 2px; background: white; }
             QCheckBox::indicator:checked { background: #0d6efd; border-color: #0d6efd; image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='white'><path d='M20.285 6.375l-1.2-1.2-8.085 8.085-4.2-4.2-1.2 1.2 5.4 5.4z'/></svg>"); }
