@@ -2,8 +2,8 @@
 
 PyPack 是一个基于 PyQt5 开发的图形化 Python 脚本打包与构建辅助工具。它整合了 **PyInstaller**、**Nuitka** 和 **cx_Freeze** 三种主流打包引擎，旨在通过直观的 GUI 界面降低命令行打包的复杂度，并提供自动依赖分析与虚拟环境隔离等功能。
 
-<img width="1203" height="1086" alt="image" src="https://github.com/user-attachments/assets/8abfbe88-b43c-442e-9f92-053bb4f1d0a1" />
-<img width="1203" height="1086" alt="image" src="https://github.com/user-attachments/assets/3b64db7b-561f-4982-91ce-4793d56ea2b8" />
+<img width="904" height="887" alt="image" src="https://github.com/user-attachments/assets/abe4c3ea-ccfe-41ab-9dd5-c99a882d69d4" />
+<img width="904" height="887" alt="image" src="https://github.com/user-attachments/assets/7a9ceed9-e070-4036-aabc-3b37bc13e036" />
 
 ---
 
