@@ -45,7 +45,8 @@ MATERIAL_ICONS = {
     'package': 'M20,2H4C3,2,2,2.9,2,4v3.01C2,7.73,2.43,8.35,3,8.7V20c0,1.1,1.1,2,2,2h14c0.9,0,2-0.9,2-2V8.7c0.57-0.35,1-0.97,1-1.69V4 C22,2.9,21,2,20,2z M19,20H5V9h14V20z M20,7H4V4h16V7z M9,12h6v2H9V12z',
     'back': 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
     'info': 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z',
-    'python': 'M12.06,1.48c-3.14,0-3.52,0.67-3.52,0.67l-0.01,2.44h3.63v0.52H7.43C5.12,5.11,4.5,6.58,4.5,8.81c0,2.34,0.38,3.48,2.3,3.48 h1.14v-1.62c0-1.48,1.23-2.65,2.7-2.65h3.69c1.47,0,2.66-1.19,2.66-2.65V3.88C16.99,1.83,14.67,1.48,12.06,1.48z M10.22,2.83 c0.41,0,0.73,0.33,0.73,0.74c0,0.41-0.33,0.74-0.73,0.74c-0.4,0-0.73-0.33-0.73-0.74C9.49,3.16,9.82,2.83,10.22,2.83z M16.71,9.89 v1.62c0,1.48-1.23,2.65-2.7,2.65H10.3c-1.47,0-2.66,1.19-2.66,2.65v1.49c0,2.05,2.32,2.41,4.92,2.41c3.14,0,3.52-0.67,3.52-0.67 l0.01-2.44h-3.63v-0.52h4.73c2.31,0,2.93-1.47,2.93-3.7c0-2.34-0.38-3.48-2.3-3.48H16.71z M13.88,18.96c0.41,0,0.73,0.33,0.73,0.74 c0,0.41-0.33,0.74-0.73,0.74c-0.4,0-0.73-0.33-0.73-0.74C13.15,19.29,13.48,18.96,13.88,18.96z'
+    'python': 'M12.06,1.48c-3.14,0-3.52,0.67-3.52,0.67l-0.01,2.44h3.63v0.52H7.43C5.12,5.11,4.5,6.58,4.5,8.81c0,2.34,0.38,3.48,2.3,3.48 h1.14v-1.62c0-1.48,1.23-2.65,2.7-2.65h3.69c1.47,0,2.66-1.19,2.66-2.65V3.88C16.99,1.83,14.67,1.48,12.06,1.48z M10.22,2.83 c0.41,0,0.73,0.33,0.73,0.74c0,0.41-0.33,0.74-0.73,0.74c-0.4,0-0.73-0.33-0.73-0.74C9.49,3.16,9.82,2.83,10.22,2.83z M16.71,9.89 v1.62c0,1.48-1.23,2.65-2.7,2.65H10.3c-1.47,0-2.66,1.19-2.66,2.65v1.49c0,2.05,2.32,2.41,4.92,2.41c3.14,0,3.52-0.67,3.52-0.67 l0.01-2.44h-3.63v-0.52h4.73c2.31,0,2.93-1.47,2.93-3.7c0-2.34-0.38-3.48-2.3-3.48H16.71z M13.88,18.96c0.41,0,0.73,0.33,0.73,0.74 c0,0.41-0.33,0.74-0.73,0.74c-0.4,0-0.73-0.33-0.73-0.74C13.15,19.29,13.48,18.96,13.88,18.96z',
+    'close': 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'
 }
 
 def get_svg_icon(name, color="#5F6368", size=24):
@@ -153,6 +154,7 @@ class TargetIconWidget(QWidget):
         self.setFixedSize(200, 200)
         self.pixmap = None
         self.base_pixmap = None
+        self.file_pixmap = None  # 用于专门记住当前加载文件的专属图标
         self.current_size = 88
         
         self.is_building = False
@@ -172,11 +174,27 @@ class TargetIconWidget(QWidget):
         self.burst_value = 0.0
         self.burst_anim = QVariantAnimation(self)
         self.burst_anim.setDuration(600)
-        self.burst_anim.setLoopCount(1) #
+        self.burst_anim.setLoopCount(1)
         self.burst_anim.setStartValue(0.0)
         self.burst_anim.setEndValue(1.0)
         self.burst_anim.setEasingCurve(QEasingCurve.OutQuad)
         self.burst_anim.valueChanged.connect(self._animate_burst)
+
+        # 抖动动画配置（用于构建失败）
+        self.shake_offset = 0
+        self.shake_anim = QVariantAnimation(self)
+        self.shake_anim.setDuration(500)
+        self.shake_anim.setStartValue(0)
+        self.shake_anim.setEndValue(0)
+        self.shake_anim.setKeyValueAt(0.0, 0)
+        self.shake_anim.setKeyValueAt(0.1, -12)
+        self.shake_anim.setKeyValueAt(0.3, 12)
+        self.shake_anim.setKeyValueAt(0.5, -12)
+        self.shake_anim.setKeyValueAt(0.7, 12)
+        self.shake_anim.setKeyValueAt(0.9, -6)
+        self.shake_anim.setKeyValueAt(1.0, 0)
+        self.shake_anim.valueChanged.connect(self._animate_shake)
+
     def set_default_pixmap(self, pixmap, size=88):
         self.base_pixmap = pixmap
         self.pixmap = pixmap
@@ -187,13 +205,27 @@ class TargetIconWidget(QWidget):
         self.pixmap = pixmap
         self.current_size = size
         self.update()
+
+    def set_file_pixmap(self, pixmap, size=88):
+        self.file_pixmap = pixmap
+        self.pixmap = pixmap
+        self.current_size = size
+        self.update()
+
     def start_building(self):
+        # 恢复之前保存的文件专属图标，覆盖掉可能残留的“成功”或“失败”图标
+        if getattr(self, 'file_pixmap', None) and not self.file_pixmap.isNull():
+            self.pixmap = self.file_pixmap
+            self.current_size = 88
+            
         self.is_building = True
         self.spin_angle = 0
         self.pulse_value = 0
         self.burst_value = 0.0
+        self.shake_offset = 0
         self.success_effect.setColor(QColor(0, 0, 0, 0))
         self.burst_anim.stop()
+        self.shake_anim.stop()
         self.anim_timer.start()
         
     def stop_building(self):
@@ -206,12 +238,21 @@ class TargetIconWidget(QWidget):
         self.success_effect.setBlurRadius(40)
         self.success_effect.setColor(QColor(255, 193, 7, 180))
         self.burst_anim.start()
+
+    def start_failure(self):
+        self.stop_building()
+        self.success_effect.setBlurRadius(40)
+        self.success_effect.setColor(QColor(217, 48, 37, 180)) # 红色警告发光
+        self.shake_anim.start()
         
     def reset(self):
         self.stop_building()
         self.burst_anim.stop()
+        self.shake_anim.stop()
         self.burst_value = 0.0
+        self.shake_offset = 0
         self.success_effect.setColor(QColor(0, 0, 0, 0))
+        self.file_pixmap = None  # 清空文件专属图标
         self.pixmap = self.base_pixmap
         self.current_size = 88
         self.update()
@@ -224,6 +265,11 @@ class TargetIconWidget(QWidget):
     def _animate_burst(self, val):
         self.burst_value = val
         self.update()
+
+    def _animate_shake(self, val):
+        self.shake_offset = val
+        self.update()
+
     def paintEvent(self, event):
         if not self.pixmap or self.pixmap.isNull():
             return
@@ -233,6 +279,7 @@ class TargetIconWidget(QWidget):
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
         
         center = self.rect().center()
+        center_x = center.x() + int(self.shake_offset)
         icon_center_y = center.y()
         draw_size = self.current_size
         
@@ -243,7 +290,7 @@ class TargetIconWidget(QWidget):
             pen.setCapStyle(Qt.RoundCap)
             painter.setPen(pen)
             
-            rect = QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2)
+            rect = QRectF(center_x - radius, center.y() - radius, radius * 2, radius * 2)
             span_angle = int((140 + 60 * math.sin(self.pulse_value * 1.5)) * 16)
             start_angle = int(-self.spin_angle * 16)
             painter.drawArc(rect, start_angle, span_angle)
@@ -261,7 +308,7 @@ class TargetIconWidget(QWidget):
                 dot_size_1 = 8 * (1.0 - self.burst_value)
                 for i in range(8):
                     angle = math.radians(i * 45)
-                    dx = center.x() + math.cos(angle) * burst_radius_1
+                    dx = center_x + math.cos(angle) * burst_radius_1
                     dy = center.y() + math.sin(angle) * burst_radius_1
                     painter.drawEllipse(QPointF(dx, dy), dot_size_1, dot_size_1)
                 
@@ -270,12 +317,12 @@ class TargetIconWidget(QWidget):
                 dot_size_2 = 6 * (1.0 - self.burst_value)
                 for i in range(8):
                     angle = math.radians(i * 45 + 22.5)
-                    dx = center.x() + math.cos(angle) * burst_radius_2
+                    dx = center_x + math.cos(angle) * burst_radius_2
                     dy = center.y() + math.sin(angle) * burst_radius_2
                     painter.drawEllipse(QPointF(dx, dy), dot_size_2, dot_size_2)
         
         pix_rect = QRect(
-            int(center.x() - draw_size / 2), 
+            int(center_x - draw_size / 2), 
             int(icon_center_y - draw_size / 2), 
             draw_size, 
             draw_size
@@ -283,6 +330,7 @@ class TargetIconWidget(QWidget):
         scaled_pix = self.pixmap.scaled(draw_size, draw_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         painter.drawPixmap(pix_rect, scaled_pix)
         painter.end()
+
 
 class DropArea(QFrame):
     fileDropped = pyqtSignal(str)
@@ -359,14 +407,17 @@ class DropArea(QFrame):
             if fp: self.fileDropped.emit(fp)
 
     def set_success(self, filename, custom_icon_path=None):
+        pixmap = None
         if custom_icon_path and Path(custom_icon_path).exists():
             pixmap = QIcon(str(custom_icon_path)).pixmap(88, 88)
-            if not pixmap.isNull():
-                self.icon_widget.set_custom_pixmap(pixmap, 88)
-            else:
-                self.icon_widget.set_custom_pixmap(get_svg_pixmap('package', color="#1A73E8", size=88), 88)
-        else:
-            self.icon_widget.set_custom_pixmap(get_svg_pixmap('package', color="#1A73E8", size=88), 88)
+            if pixmap.isNull():
+                pixmap = None
+                
+        if not pixmap:
+            pixmap = get_svg_pixmap('package', color="#1A73E8", size=88)
+            
+        # 使用 set_file_pixmap，避免覆盖 base_pixmap 导致复位失败
+        self.icon_widget.set_file_pixmap(pixmap, 88)
             
         self.label.setText(f"已加载：{filename}")
         self.label.setStyleSheet("QLabel { background: transparent; color: #1A73E8; font-size: 16px; font-weight: bold; border: none; }")
@@ -399,6 +450,15 @@ class DropArea(QFrame):
         self.label.setText("构建完成！")
         self.label.setStyleSheet("QLabel { background: transparent; color: #1E8E3E; font-size: 20px; font-weight: bold; border: none; }")
         self.sub_label.setText("可打开目录查看或重置工作区")
+
+    def show_failure(self):
+        size = 128
+        self.icon_widget.set_custom_pixmap(get_svg_pixmap('close', color="#D93025", size=size), size)
+        self.icon_widget.start_failure()
+        
+        self.label.setText("构建失败！")
+        self.label.setStyleSheet("QLabel { background: transparent; color: #D93025; font-size: 20px; font-weight: bold; border: none; }")
+        self.sub_label.setText("请检查下方的日志诊断报告")
         
     def reset(self):
         self.icon_widget.reset()
@@ -794,15 +854,13 @@ class PackingThread(QThread):
     def sanitize_script(self, orig_path: Path):
         try:
             raw = orig_path.read_bytes()
-            if b"__CLOUDSYNC_ENC__" in raw[:1024]: return None, False, "目标脚本被云盘锁定加密！"
-            try: content = raw.decode('utf-8-sig')
-            except: content = raw.decode('gbk', errors='ignore')
-
-            new_lines = [line for i, line in enumerate(content.splitlines()) if not (i < 2 and 'coding' in line and re.search(r'coding[:=]\s*([-\w.]+)', line))]
-            temp_path = orig_path.parent / f"pypack_temp_{orig_path.name}"
-            temp_path.write_text('\n'.join(new_lines), encoding='utf-8')
-            return temp_path, True, ""
-        except Exception as e: return orig_path, False, ""
+            if b"__CLOUDSYNC_ENC__" in raw[:1024]: 
+                return None, False, "目标脚本被云盘锁定加密！"
+        except Exception:
+            pass
+        # 移除了所有重命名及生成 pypack_temp_ 前缀文件的死代码
+        # 直接透传原始文件可防止 Nuitka 生成带有临时前缀的 DLL 触发 Windows 智能应用控制的启发式拦截
+        return orig_path, False, ""
 
     def run(self):
         os.environ["NUITKA_ACCEPT_DOWNLOADS"] = "yes"
@@ -810,6 +868,7 @@ class PackingThread(QThread):
         pip_idx = self.params.get('pip_index_url', '').strip()
         is_temp = False
         build_script_path = None
+        ext = ".exe" if os.name == "nt" else ""
 
         try:
             self.progress.emit("[清理] 初始化构建管线...")
@@ -901,7 +960,7 @@ class PackingThread(QThread):
                     sep = ';' if os.name == 'nt' else ':'
                     cmd.extend(["--add-data", f"{icon_path}{sep}."])
                     
-                if self.params.get('version_file'): cmd.extend(["--version-file", self.params['version_file']])
+                if self.params.get('version_file') and os.name == "nt": cmd.extend(["--version-file", self.params['version_file']])
                 if self.params.get('upx'):
                     upx_dir = (Path.cwd() / "upx").resolve()
                     if upx_dir.exists(): cmd.append(f"--upx-dir={upx_dir.as_posix()}")
@@ -920,23 +979,32 @@ class PackingThread(QThread):
             elif engine == "Nuitka":
                 self.temp_out_dir = Path(tempfile.mkdtemp(prefix="nuitka_out_")).resolve()
                 cmd = [python_exe, "-m", "nuitka", "--remove-output", "--assume-yes-for-downloads",
-                       f"--output-dir={self.temp_out_dir.as_posix()}", f"--output-filename={app_name}.exe"]
+                       f"--output-dir={self.temp_out_dir.as_posix()}", f"--output-filename={app_name}{ext}"]
                 
                 cmd.append(f"--jobs={os.cpu_count() or 4}")
                 
                 if self.params.get('onefile'): cmd.append("--onefile")
                 else: cmd.append("--standalone")
                 if self.params.get('noconsole'): cmd.append("--windows-console-mode=disable")
+                
                 if icon_path: 
-                    cmd.append(f"--windows-icon-from-ico={icon_path}")
-                    cmd.extend(["--include-data-files", f"{icon_path}=."])
-                if self.params.get('ver_comp'): cmd.append(f"--company-name={self.params['ver_comp']}")
-                if self.params.get('ver_desc'): cmd.append(f"--product-name={self.params['ver_desc']}")
-                if self.params.get('ver_ver'): cmd.append(f"--file-version={self.params['ver_ver']}")
+                    if os.name == "nt":
+                        cmd.append(f"--windows-icon-from-ico={icon_path}")
+                    elif sys.platform == "darwin" and icon_path.endswith(".icns"):
+                        cmd.append(f"--macos-app-icon={icon_path}")
+                    # 使用精确的文件名作为目标部署位置，以避开 Nuitka '.' 校验致命错误
+                    cmd.append(f"--include-data-files={icon_path}={Path(icon_path).name}")
+                    
+                if os.name == "nt":
+                    if self.params.get('ver_comp'): cmd.append(f"--company-name={self.params['ver_comp']}")
+                    if self.params.get('ver_desc'): cmd.append(f"--product-name={self.params['ver_desc']}")
+                    if self.params.get('ver_ver'): cmd.append(f"--file-version={self.params['ver_ver']}")
+                    
                 try:
                     if 'PyQt5' in build_script_path.read_text(encoding='utf-8', errors='ignore'):
                         cmd.append("--enable-plugin=pyqt5")
                 except: pass
+                
                 for imp in self.params.get('hidden_imports', '').split(','):
                     if imp.strip(): cmd.append(f"--include-module={imp.strip()}")
                 for d in self.params.get('add_data', '').split(','):
@@ -944,10 +1012,11 @@ class PackingThread(QThread):
                     if d:
                         d = d.replace('\\', '/')
                         parts = d.split(':', 1)
-                        if len(parts) == 2: cmd.extend(["--include-data-files", f"{parts[0]}={parts[1]}"])
+                        if len(parts) == 2: 
+                            cmd.append(f"--include-data-files={parts[0]}={parts[1]}")
                             
             elif engine == "cx_Freeze":
-                cmd = [python_exe, "-m", "cx_Freeze", script_posix, f"--target-dir=dist/{app_name}", f"--target-name={app_name}.exe"]
+                cmd = [python_exe, "-m", "cx_Freeze", script_posix, f"--target-dir=dist/{app_name}", f"--target-name={app_name}{ext}"]
                 if self.params.get('noconsole'): cmd.append("--base=Win32GUI")
                 else: cmd.append("--base=Console")
                 
@@ -963,7 +1032,7 @@ class PackingThread(QThread):
                         d = d.replace('\\', '/')
                         parts = d.split(':', 1)
                         if len(parts) == 2: add_data_list.append(f"{parts[0]}={parts[1]}")
-                if add_data_list: cmd.extend(["--include-files", ";".join(add_data_list)])
+                if add_data_list: cmd.append(f"--include-files={','.join(add_data_list)}")
 
             if engine in ["PyInstaller", "Nuitka"]: cmd.append(script_posix)
 
@@ -972,8 +1041,8 @@ class PackingThread(QThread):
 
             self.progress.emit("[收尾] 归档可执行文件...")
             cwd = Path.cwd().resolve()
-            if engine == "PyInstaller": src_out = cwd / "dist" / (f"{app_name}.exe" if self.params['onefile'] else app_name)
-            elif engine == "Nuitka": src_out = self.temp_out_dir / (f"{app_name}.exe" if self.params['onefile'] else f"{app_name}.dist")
+            if engine == "PyInstaller": src_out = cwd / "dist" / (f"{app_name}{ext}" if self.params['onefile'] else app_name)
+            elif engine == "Nuitka": src_out = self.temp_out_dir / (f"{app_name}{ext}" if self.params['onefile'] else f"{app_name}.dist")
             elif engine == "cx_Freeze": src_out = cwd / "dist" / app_name
 
             final_out = script_dir / src_out.name
@@ -1011,6 +1080,7 @@ class PackingThread(QThread):
                 Path(cwd / f"{app_name}.spec").unlink(missing_ok=True)
                 if self.params.get('version_file'): Path(self.params['version_file']).unlink(missing_ok=True)
 
+
 # ======================== 界面主窗口 ========================
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -1022,7 +1092,7 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def init_style(self):
-        self.setWindowTitle("PyPack 2.0 - QwejayHuang")
+        self.setWindowTitle("PyPack 2.0")
         self.setMinimumSize(580, 520)
         self.resize(600, 560)
         
@@ -1146,22 +1216,27 @@ class MainWindow(QMainWindow):
             self.btn_main.setIcon(get_svg_icon('stop', "white"))
             self.btn_main.setStyleSheet(self.danger_btn_style)
             
-        elif state == "done":
+        elif state in ("done", "failed"):
             self.btn_left.setIcon(get_svg_icon('refresh', "#5F6368"))
             self.btn_left.setToolTip("重置工作区")
             
-            self.btn_main.setText(" 打开输出目录")
-            self.btn_main.setIcon(get_svg_icon('folder', "white"))
-            self.btn_main.setStyleSheet(self.success_btn_style)
+            if state == "done":
+                self.btn_main.setText(" 打开输出目录")
+                self.btn_main.setIcon(get_svg_icon('folder', "white"))
+                self.btn_main.setStyleSheet(self.success_btn_style)
+            else:
+                self.btn_main.setText(" 重新构建")
+                self.btn_main.setIcon(get_svg_icon('refresh', "white"))
+                self.btn_main.setStyleSheet(self.danger_btn_style)
 
     def on_left_btn_clicked(self):
-        if self.current_state == "done":
+        if self.current_state in ("done", "failed"):
             self.reset_all()
         else:
             self.toggle_log()
 
     def on_main_btn_clicked(self):
-        if self.current_state in ("idle", "ready"):
+        if self.current_state in ("idle", "ready", "failed"):
             self.start_pack()
         elif self.current_state == "building":
             self.cancel_pack()
@@ -1288,8 +1363,9 @@ class MainWindow(QMainWindow):
             self.status_label.setText(" 状态: 构建完成 ✅")
             self.update_ui_state("done")
         else:
+            self.drop_area.show_failure()
             self.status_label.setText(" 状态: 构建失败 ❌")
-            self.update_ui_state("ready")
+            self.update_ui_state("failed")
 
     def open_dist(self):
         if self.settings_panel.clean_all_check.isChecked() and self.script_path:
