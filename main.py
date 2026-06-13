@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-PyPack 2.1 -  自动化构建工具
-支持引擎: PyInstaller / Nuitka / cx_Freeze
-"""
+
+__app_name__ = "QPyPack"
+__version__ = "2.1.0"
+__author__ = "QwejayHuang"
+__company__ = "Qwesoft"
+__description__ = "自动化 Python 脚本打包构建工具"
 
 import sys
 import os
@@ -32,7 +34,6 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCur
 from PyQt5.QtGui import QFont, QDragEnterEvent, QDropEvent, QTextCursor, QIcon, QPixmap, QPainter, QColor, QPen
 from PyQt5.QtSvg import QSvgRenderer
 
-# ======================== Material Design 内置 SVG 引擎 ========================
 MATERIAL_ICONS = {
     'settings': 'M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z',
     'refresh': 'M17.65,6.35C16.2,4.9,14.21,4,12,4c-4.42,0-7.99,3.58-7.99,8s3.57,8,7.99,8c3.73,0,6.84-2.55,7.73-6h-2.08 c-0.82,2.33-3.04,4-5.65,4c-3.31,0-6-2.69-6-6s2.69-6,6-6c1.66,0,3.14,0.69,4.22,1.78L13,11h7V4L17.65,6.35z',
@@ -65,7 +66,6 @@ def get_svg_pixmap(name, color="#5F6368", size=64):
     return get_svg_icon(name, color, size).pixmap(size, size)
 
 
-# ======================== 工具与配置 ========================
 def get_stdlib_names():
     libs = {'os', 'sys', 're', 'math', 'time', 'datetime', 'json', 'urllib', 'sqlite3', 'csv', 
             'subprocess', 'shutil', 'threading', 'multprocessing', 'queue', 'socket', 
@@ -106,7 +106,6 @@ def robust_rmtree(path: Path, retries=15, delay=0.8):
     return False
 
 
-# ======================== 界面动效组件 ========================
 class AnimatedButton(QPushButton):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
@@ -148,13 +147,12 @@ class AnimatedButton(QPushButton):
         super().leaveEvent(event)
 
 class TargetIconWidget(QWidget):
-    """自定义图标渲染组件，接管无损抗锯齿与复合重绘效果"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(200, 200)
         self.pixmap = None
         self.base_pixmap = None
-        self.file_pixmap = None  # 用于专门记住当前加载文件的专属图标
+        self.file_pixmap = None
         self.current_size = 88
         
         self.is_building = False
@@ -180,7 +178,6 @@ class TargetIconWidget(QWidget):
         self.burst_anim.setEasingCurve(QEasingCurve.OutQuad)
         self.burst_anim.valueChanged.connect(self._animate_burst)
 
-        # 抖动动画配置（用于构建失败）
         self.shake_offset = 0
         self.shake_anim = QVariantAnimation(self)
         self.shake_anim.setDuration(500)
@@ -213,7 +210,6 @@ class TargetIconWidget(QWidget):
         self.update()
 
     def start_building(self):
-        # 恢复之前保存的文件专属图标，覆盖掉可能残留的“成功”或“失败”图标
         if getattr(self, 'file_pixmap', None) and not self.file_pixmap.isNull():
             self.pixmap = self.file_pixmap
             self.current_size = 88
@@ -252,7 +248,7 @@ class TargetIconWidget(QWidget):
         self.burst_value = 0.0
         self.shake_offset = 0
         self.success_effect.setColor(QColor(0, 0, 0, 0))
-        self.file_pixmap = None  # 清空文件专属图标
+        self.file_pixmap = None
         self.pixmap = self.base_pixmap
         self.current_size = 88
         self.update()
@@ -416,7 +412,6 @@ class DropArea(QFrame):
         if not pixmap:
             pixmap = get_svg_pixmap('package', color="#1A73E8", size=88)
             
-        # 使用 set_file_pixmap，避免覆盖 base_pixmap 导致复位失败
         self.icon_widget.set_file_pixmap(pixmap, 88)
             
         self.label.setText(f"已加载：{filename}")
@@ -858,8 +853,6 @@ class PackingThread(QThread):
                 return None, False, "目标脚本被云盘锁定加密！"
         except Exception:
             pass
-        # 移除了所有重命名及生成 pypack_temp_ 前缀文件的死代码
-        # 直接透传原始文件可防止 Nuitka 生成带有临时前缀的 DLL 触发 Windows 智能应用控制的启发式拦截
         return orig_path, False, ""
 
     def run(self):
@@ -884,7 +877,7 @@ class PackingThread(QThread):
 
             if self.params['use_venv']:
                 self.progress.emit("[环境] 初始化虚拟隔离沙盒...")
-                self.venv_dir = Path(tempfile.mkdtemp(prefix="pypack_env_")).resolve()
+                self.venv_dir = Path(tempfile.mkdtemp(prefix="QPyPack_env_")).resolve()
                 if not self.run_cmd([get_python_executable(), "-m", "venv", self.venv_dir.as_posix()]):
                     return self.finished.emit(False, "虚拟环境初始化失败。")
                 python_exe = (self.venv_dir / ("Scripts/python.exe" if os.name == "nt" else "bin/python")).as_posix()
@@ -908,7 +901,7 @@ class PackingThread(QThread):
                         if b"__CLOUDSYNC_ENC__" in raw_req[:1024]: raise ValueError("文件被锁定")
                         try: req_content = raw_req.decode('utf-8-sig')
                         except: req_content = raw_req.decode(locale.getpreferredencoding(), errors='ignore')
-                        temp_req = script_dir / "pypack_temp_reqs.txt"
+                        temp_req = script_dir / "QPyPack_temp_reqs.txt"
                         temp_req.write_text(req_content, encoding='utf-8')
                         if self.run_cmd([python_exe, "-m", "pip", "install", "-q", "-r", temp_req.as_posix()] + pip_args):
                             req_success = True
@@ -917,7 +910,7 @@ class PackingThread(QThread):
             if self.params.get('use_pipreqs') and not req_success:
                 self.progress.emit("[依赖] 执行 pipreqs 深度推导...")
                 self.run_cmd([python_exe, "-m", "pip", "install", "pipreqs", "-q"] + pip_args)
-                temp_pipreqs = script_dir / "pypack_pipreqs_out.txt"
+                temp_pipreqs = script_dir / "QPyPack_pipreqs_out.txt"
                 self.run_cmd([python_exe, "-m", "pipreqs.pipreqs", script_dir.as_posix(), "--encoding", "utf-8", "--force", "--savepath", temp_pipreqs.as_posix()])
                 if temp_pipreqs.exists():
                     if self.run_cmd([python_exe, "-m", "pip", "install", "-q", "-r", temp_pipreqs.as_posix()] + pip_args): req_success = True
@@ -949,18 +942,17 @@ class PackingThread(QThread):
             icon_path = Path(self.params['icon']).resolve().as_posix() if self.params.get('icon') else None
 
             if engine == "PyInstaller":
-                self.temp_workpath = Path(tempfile.mkdtemp(prefix="pypack_build_")).resolve()
+                self.temp_workpath = Path(tempfile.mkdtemp(prefix="QPyPack_build_")).resolve()
                 cmd = [python_exe, "-m", "PyInstaller", "--clean", "-y", f"--workpath={self.temp_workpath.as_posix()}", f"--name={app_name}"]
+                
                 if self.params.get('onefile'): 
                     cmd.append("--onefile")
-                    if os.name == "nt":
-                        cmd.append(f"--windows-onefile-tempdir-spec=%LOCALAPPDATA%\\{app_name}_Env")
                 else: 
-                    cmd.append("--standalone")
+                    cmd.append("--onedir")
                 
-                if self.params.get('noconsole'): cmd.append("--windows-console-mode=disable")
+                if self.params.get('noconsole'): 
+                    cmd.append("--noconsole")
 
-                
                 if icon_path: 
                     cmd.extend(["--icon", icon_path])
                     sep = ';' if os.name == 'nt' else ':'
@@ -998,7 +990,6 @@ class PackingThread(QThread):
                         cmd.append(f"--windows-icon-from-ico={icon_path}")
                     elif sys.platform == "darwin" and icon_path.endswith(".icns"):
                         cmd.append(f"--macos-app-icon={icon_path}")
-                    # 使用精确的文件名作为目标部署位置，以避开 Nuitka '.' 校验致命错误
                     cmd.append(f"--include-data-files={icon_path}={Path(icon_path).name}")
                     
                 if os.name == "nt":
@@ -1098,7 +1089,8 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def init_style(self):
-        self.setWindowTitle("PyPack 2.1")
+        self.setWindowTitle(f"{__app_name__} {__version__} - {__author__}")
+        
         self.setMinimumSize(580, 520)
         self.resize(600, 560)
         
@@ -1282,6 +1274,25 @@ class MainWindow(QMainWindow):
         self.script_path = path
         self.settings_panel.name_edit.setText(Path(path).stem)
         
+        try:
+            content = Path(path).read_text(encoding='utf-8', errors='ignore')
+            
+            v_match = re.search(r'^(?:__version__|VERSION|version)\s*=\s*[\'"]([^\'"]+)[\'"]', content, re.M | re.I)
+            if v_match: self.settings_panel.ver_ver.setText(v_match.group(1))
+                
+            c_match = re.search(r'^(?:__author__|__company__|AUTHOR)\s*=\s*[\'"]([^\'"]+)[\'"]', content, re.M | re.I)
+            if c_match: self.settings_panel.ver_comp.setText(c_match.group(1))
+                
+            n_match = re.search(r'^(?:__title__|__app_name__|APP_NAME)\s*=\s*[\'"]([^\'"]+)[\'"]', content, re.M | re.I)
+            if n_match: 
+                self.settings_panel.name_edit.setText(n_match.group(1))
+                
+            d_match = re.search(r'^(?:__description__|DESCRIPTION)\s*=\s*[\'"]([^\'"]+)[\'"]', content, re.M | re.I)
+            if d_match: 
+                self.settings_panel.ver_desc.setText(d_match.group(1))
+
+        except: pass
+        
         script_dir = Path(path).parent
         auto_icon = None
         
@@ -1322,8 +1333,13 @@ class MainWindow(QMainWindow):
         version_file = None
         if engine == "PyInstaller" and sp.ver_ver.text().strip():
             try:
-                content = f'''VSVersionInfo(ffi=FixedFileInfo(filevers=(1,0,0,0),prodvers=(1,0,0,0),mask=0x3f,flags=0x0,OS=0x40004,fileType=0x1,subtype=0x0,date=(0,0)),kids=[StringFileInfo([StringTable('040904B0',[StringStruct('CompanyName','{sp.ver_comp.text()}'),StringStruct('FileDescription','{sp.ver_desc.text()}'),StringStruct('FileVersion','{sp.ver_ver.text()}'),StringStruct('ProductVersion','{sp.ver_ver.text()}'),StringStruct('OriginalFilename','{app_name}.exe')])])])'''
-                version_file = Path(tempfile.gettempdir()) / f"pypack_{app_name}_version.txt"
+                # 动态计算 Windows PE 需要的物理版本格式 (四位整数元组)
+                v_str = sp.ver_ver.text().strip()
+                v_nums = re.findall(r'\d+', v_str)
+                v_tuple = ",".join((v_nums + ['0', '0', '0', '0'])[:4])
+                
+                content = f'''VSVersionInfo(ffi=FixedFileInfo(filevers=({v_tuple}),prodvers=({v_tuple}),mask=0x3f,flags=0x0,OS=0x40004,fileType=0x1,subtype=0x0,date=(0,0)),kids=[StringFileInfo([StringTable('040904B0',[StringStruct('CompanyName','{sp.ver_comp.text()}'),StringStruct('FileDescription','{sp.ver_desc.text()}'),StringStruct('FileVersion','{v_str}'),StringStruct('ProductVersion','{v_str}'),StringStruct('OriginalFilename','{app_name}.exe')])])])'''
+                version_file = Path(tempfile.gettempdir()) / f"QPyPack_{app_name}_version.txt"
                 version_file.write_text(content, encoding='utf-8')
             except: pass
 
